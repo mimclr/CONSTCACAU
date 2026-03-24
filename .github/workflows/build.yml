@@ -1,0 +1,58 @@
+name: Build .exe — Labor Rural
+
+on:
+  push:
+    tags:
+      - 'v*'          # Dispara ao criar uma tag como v1.0.0
+  workflow_dispatch:  # Permite rodar manualmente pelo GitHub
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas pyinstaller
+
+      - name: Gerar .exe com PyInstaller
+        run: |
+          pyinstaller build.spec
+
+      - name: Upload do executável como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: Analise_Consistencia_LaborRural
+          path: dist/Analise_Consistencia_LaborRural.exe
+
+      - name: Criar Release no GitHub
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Analise_Consistencia_LaborRural.exe
+          name: "Análise de Consistência Labor Rural ${{ github.ref_name }}"
+          body: |
+            ## Análise de Consistência — Labor Rural
+            
+            ### Como usar
+            1. Baixe o arquivo `Analise_Consistencia_LaborRural.exe`
+            2. Execute diretamente (sem instalação necessária)
+            3. Importe a planilha MIMC no formato `.xlsx`
+            4. Clique em **Analisar** e revise as inconsistências
+            
+            ### Verificações realizadas
+            - **INVENTÁRIO**: valores fora do intervalo R$100–R$500k, datas de fabricação posteriores à aquisição
+            - **PRODUÇÃO**: rateio com talhões faltando ou valores divergentes
+            - **DESPESAS**: atividades sem M.O., manutenção classificada como Administração, valores R$/ha > 5k, valores unitários fora do padrão, rateio incompleto, lançamentos duplicados, recorrência administrativa
+            - **VENDAS**: preço de venda acima de R$100/sc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
